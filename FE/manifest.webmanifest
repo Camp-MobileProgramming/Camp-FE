@@ -1,9 +1,22 @@
 {
-  "name": "My Web App",
-  "short_name": "WebApp",
-  "start_url": ".",
-  "display": "browser",
+  "name": "Live Map Tracker",
+  "short_name": "LiveMap",
+  "description": "실시간 위치 공유 지도 서비스",
+  "start_url": "/",
+  "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "icons": []
+  "theme_color": "#2d68ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
