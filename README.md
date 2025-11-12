@@ -6,6 +6,7 @@ Camp-FE
 ```bash
 git clone https://github.com/Camp-MobileProgramming/Camp-FE.git
 cd Camp-FE
+git switch dev
 cd FE
 ```
 2)
