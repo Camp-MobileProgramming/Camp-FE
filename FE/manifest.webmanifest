@@ -1,0 +1,9 @@
+{
+  "name": "My Web App",
+  "short_name": "WebApp",
+  "start_url": ".",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": []
+}
