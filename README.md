@@ -4,7 +4,7 @@ Camp-FE
 실행방법
 1)
 ```bash
-git clone https://github.com/너희레포주소.git
+git clone https://github.com/Camp-MobileProgramming/Camp-FE.git
 cd Camp-FE
 ```
 2)
