@@ -10,6 +10,7 @@ export default function MapView() {
   const othersRef = useRef(new Map());
   const wsRef = useRef(null);
   const [isFriendsOnly, setIsFriendsOnly] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const { kakao } = window;
@@ -93,7 +94,7 @@ export default function MapView() {
           <h1>캠프맵</h1>
           <span>주변 캠퍼 6명</span>
         </div>
-        <button className="settings-button">⚙️</button>
+        <button className="settings-button" onClick={() => setShowSettings(!showSettings)}>⚙️</button>
       </header>
       
       <div className="map-controls">
@@ -112,6 +113,34 @@ export default function MapView() {
       </div>
       
       <div ref={mapRef} className="map-container" />
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="settings-modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>설정</h3>
+            <div className="settings-item">
+              <label>위치 공유</label>
+              <input type="checkbox" defaultChecked />
+            </div>
+            <div className="settings-item">
+              <label>친구에게만 공개</label>
+              <input 
+                type="checkbox" 
+                checked={isFriendsOnly}
+                onChange={() => setIsFriendsOnly(!isFriendsOnly)}
+              />
+            </div>
+            <div className="settings-item">
+              <label>배경 소리</label>
+              <input type="checkbox" />
+            </div>
+            <button className="close-settings" onClick={() => setShowSettings(false)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
       
       <BottomNav />
     </div>
