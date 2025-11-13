@@ -1,3 +1,4 @@
+/*
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './LoginPage.css';
@@ -101,8 +102,8 @@ function LoginPage({ onLogin }) {
 }
 
 export default LoginPage;
-
-/* 메인 화면 볼 때 위 코드 주석처리 후 아래 코드 사용
+*/
+// 메인 화면 볼 때 위 코드 주석처리 후 아래 코드 사용
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -190,4 +191,3 @@ function LoginPage({ onLogin }) {
 }
 
 export default LoginPage;
-*/
