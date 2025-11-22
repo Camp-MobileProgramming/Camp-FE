@@ -35,7 +35,23 @@ function LoginPage({ onLogin }) {
       if (response.ok) {
         const data = await response.json();
         console.log('[Login] response body:', data);
-        onLogin(data.token);
+
+        // 🔹 토큰, 유저정보 로컬에 저장 (있을 때만)
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        // userId는 안 쓰기로 했으니 제거
+        if (data.nickname) {
+          localStorage.setItem('nickname', data.nickname);
+        }
+        if (data.email) {
+          localStorage.setItem('email', data.email);
+        }
+
+        // App에서 라우팅/상태 관리
+        if (onLogin) {
+          onLogin(data.token);
+        }
       } else {
         const msg = await response.text();
         console.log('[Login] error body:', msg);

@@ -21,7 +21,7 @@ function App() {
     setIsLoggedIn(false);
   };
 
-  return (
+  return ( 
     <Routes>
       <Route
         path="/"
@@ -47,6 +47,12 @@ function App() {
           isLoggedIn ? <ProfilePage onLogout={handleLogout} /> : <Navigate to="/login" replace />
         }
       />
+      <Route 
+        path="/profile/:nickname" 
+        element={<ProfilePage />} 
+      
+      />
+
       <Route
         path="/login"
         element={
