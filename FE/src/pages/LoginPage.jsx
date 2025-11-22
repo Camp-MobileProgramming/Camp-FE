@@ -36,7 +36,7 @@ function LoginPage({ onLogin }) {
         const data = await response.json();
         console.log('[Login] response body:', data);
 
-        // 🔹 토큰, 유저정보 로컬에 저장 (있을 때만)
+        // 토큰, 유저정보 로컬에 저장 (있을 때만)
         if (data.token) {
           localStorage.setItem('token', data.token);
         }

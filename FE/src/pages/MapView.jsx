@@ -218,7 +218,11 @@ export default function MapView() {
           <h1>캠프맵</h1>
           <span>주변 캠퍼 6명</span>
         </div>
-        <button className="settings-button">⚙️</button>
+        <button 
+        className="settings-button"
+        onClick={() => navigate("/settings")}
+        >
+          ⚙️</button>
       </header>
 
       <div className="map-controls">
