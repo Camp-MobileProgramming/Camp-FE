@@ -7,6 +7,7 @@ import MapView from './pages/MapView';
 import ChatListPage from './pages/ChatListPage';
 import FriendsPage from './pages/FriendsPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingPage from './pages/SettingPage';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -51,6 +52,12 @@ function App() {
         path="/profile/:nickname" 
         element={<ProfilePage />} 
       
+      />
+      <Route
+        path="/settings"
+        element={
+          isLoggedIn ? <SettingPage /> : <Navigate to="/login" replace />
+        }
       />
 
       <Route
