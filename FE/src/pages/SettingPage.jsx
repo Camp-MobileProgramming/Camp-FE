@@ -9,6 +9,17 @@ function SettingPage() {
     const [chatAlarm, setChatAlarm] = useState(false);
     const [campRequestAlarm, setCampRequestAlarm] = useState(false);
 
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('email');
+        localStorage.removeItem('nickname');
+        localStorage.removeItem('userId');
+        
+        alert('로그아웃 되었습니다.');
+        navigate('/login');
+        window.location.reload();
+    };
+
     return (
         <div className="setting-page">
         <header className="setting-header">
@@ -32,7 +43,8 @@ function SettingPage() {
                 <div className="profile-title">내 프로필</div>
                 <div className="profile-subtitle">프로필 보기 및 수정</div>
                 </div>
-                <button className="arrow-button">›</button>
+                <button className="arrow-button" onClick={() => 
+                    navigate('/profile')}>›</button>
             </div>
             </div>
 
@@ -191,7 +203,7 @@ function SettingPage() {
 
             {/* 로그아웃 버튼 */}
             <div className="setting-section logout-section">
-            <button className="logout-button" onClick={() => {}}>
+            <button className="logout-button" onClick={handleLogout}>
                 {/* 로그아웃 이모티콘 */}
                 <svg className="logout-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5 3C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H11C12.1 21 13 20.1 13 19V17H11V19H5V5H11V7H13V5C13 3.9 12.1 3 11 3H5Z" fill="#ff4444"/>
