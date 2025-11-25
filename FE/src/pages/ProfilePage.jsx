@@ -71,13 +71,14 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('token');
       const myNick = localStorage.getItem('nickname');
+      const encodedNick = encodeURIComponent(myNick);
       const response = await fetch('/api/friends/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${myNick}`
+          'Authorization': `Bearer ${encodedNick}`
         },
-        body: JSON.stringify({ targetNickname: paramNickname })
+        body: JSON.stringify({ receiverNickname: paramNickname })
       });
 
       if (!response.ok) {
