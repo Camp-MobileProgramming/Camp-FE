@@ -64,9 +64,32 @@ export default function ProfilePage() {
     alert('채팅 기능은 추후 추가 예정입니다.');
   };
 
-  const handleUnfriend = () => {
-    const ok = window.confirm('정말 친구를 삭제하시겠습니까?');
-    if (ok) alert('친구 삭제 API는 추후 추가될 예정입니다.');
+  const handleSendFriendRequest = async () => {
+    const ok = window.confirm(`${displayNickname}님에게 친구 신청을 보내시겠습니까?`);
+    if (!ok) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const myNick = localStorage.getItem('nickname');
+      const encodedNick = encodeURIComponent(myNick);
+      const response = await fetch('/api/friends/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${encodedNick}`
+        },
+        body: JSON.stringify({ receiverNickname: paramNickname })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      alert('친구 신청을 보냈습니다.');
+    } catch (err) {
+      console.error('sendFriendRequest error', err);
+      alert('친구 신청을 보내는 중 오류가 발생했습니다.');
+    }
   };
 
   return (
@@ -136,14 +159,14 @@ export default function ProfilePage() {
             </button>
           )}
 
-          {/* 상대 프로필 → 채팅 / 친구삭제 버튼 */}
+          {/* 상대 프로필 → 채팅 / 친구신청 버튼 */}
           {!isMe && (
             <div className="profile-other-actions">
               <button className="profile-chat-btn" onClick={handleChat}>
                 채팅
               </button>
-              <button className="profile-unfriend-btn" onClick={handleUnfriend}>
-                친구 삭제
+              <button className="profile-unfriend-btn" onClick={handleSendFriendRequest}>
+                친구 신청
               </button>
             </div>
           )}
