@@ -12,11 +12,49 @@ export default function MapView() {
   const wsRef = useRef(null);
 
   const [isFriendsOnly, setIsFriendsOnly] = useState(true);
+  const [friendsSet, setFriendsSet] = useState(new Set()); // 친구 닉네임 목록
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [nearbyCount, setNearbyCount] = useState(0);
   const navigate = useNavigate();
 
-  // 로그인 시 저장해 둔 정보 사용 (없으면 '나')
+  // 로그인 시 저장해 둔 정보 사용
   const nickname = localStorage.getItem('nickname') || '나';
+  const userId = localStorage.getItem('userId'); // DB PK (로그인 시 저장했다고 가정)
 
+  // 친구목록
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const myNick = localStorage.getItem('nickname');
+        if (!myNick) return;
+
+        const encodedNick = encodeURIComponent(myNick);
+        const res = await fetch('/api/friends/list', {
+          headers: {
+            'Authorization': `Bearer ${encodedNick}`,
+          },
+        });
+
+        if (!res.ok) {
+          console.warn('친구 목록 로드 실패', res.status);
+          return;
+        }
+
+        const data = await res.json();
+        const set = new Set(
+          data
+            .map((f) => f.nickname) 
+            .filter(Boolean)
+        );
+        setFriendsSet(set);
+        setFriendsCount(set.size);
+      } catch (e) {
+        console.error('친구 목록 불러오기 에러', e);
+      }
+    };
+
+    fetchFriends();
+  }, []);
   useEffect(() => {
     const { kakao } = window;
 
@@ -34,7 +72,7 @@ export default function MapView() {
       const map = new kakao.maps.Map(mapRef.current, { center, level: 1 });
       kakaoMapRef.current = map;
 
-      // 내 마커: 동그라미 + 내 닉네임
+      // --- 내 마커 ---
       const myEl = document.createElement('div');
       myEl.className = 'user-marker my-marker';
       myEl.innerText = nickname;
@@ -57,7 +95,6 @@ export default function MapView() {
       });
 
       // 내 마커 클릭 → 내 프로필로 이동
-      // (프로필 페이지에서 localStorage.nickname 사용하면 됨)
       myEl.addEventListener('click', () => {
         navigate('/profile');
       });
@@ -72,12 +109,14 @@ export default function MapView() {
       myOverlay.setMap(map);
       myMarkerRef.current = myOverlay;
 
-      //WebSocket 연결
+      // --- WebSocket 연결 ---
+      const effectiveUserId =
+        userId || 'anon-' + Math.random().toString(36).slice(2, 8); // DB 없으면 임시값
+
       const ws = connectWS({
-        // 아직 DB PK 안 쓰니까 세션용 임시 ID
-        userId: 'user-' + Math.random().toString(36).slice(2, 6),
+        userId: String(effectiveUserId), // DB PK 사용
         postId: 'room-1',
-        nickname, // 🔹 서버에 join 시 전달
+        nickname,                        // 서버에 join 시 전달
 
         onJoinAck: (m) => {
           if (ws) ws.sessionId = m.sessionId;
@@ -102,7 +141,20 @@ export default function MapView() {
 
           // 다른 사람들 위치
           const others = othersRef.current;
-          const displayName = otherNickname || sessionId?.slice(-4) || 'USER';
+          const rawNickname = otherNickname || sessionId?.slice(-4) || 'USER';
+          const displayName = rawNickname;
+
+          // 친구 공개 모드일 때, 친구가 아니면 marker 생성/유지 안 함
+          if (isFriendsOnly && friendsSet.size > 0 && !friendsSet.has(rawNickname)) {
+            // 이미 존재하던 마커면 지우기
+            if (others.has(sessionId)) {
+              const info = others.get(sessionId);
+              info.overlay.setMap(null);
+              others.delete(sessionId);
+            }
+            setNearbyCount(othersRef.current.size);
+            return;
+          }
 
           if (!others.has(sessionId)) {
             // 처음 보는 세션 → 동그라미 마커 생성
@@ -131,9 +183,6 @@ export default function MapView() {
             el.addEventListener('click', () => {
               if (otherNickname) {
                 navigate(`/profile/${encodeURIComponent(otherNickname)}`);
-              } else {
-                // 닉네임이 없으면 세션ID로라도 구분
-                navigate(`/profile/session/${sessionId}`);
               }
             });
 
@@ -145,18 +194,20 @@ export default function MapView() {
             });
 
             overlay.setMap(map);
-            others.set(sessionId, { overlay, el, nickname: displayName });
+            others.set(sessionId, { overlay, el, nickname: rawNickname });
           } else {
             const info = others.get(sessionId);
             info.overlay.setPosition(pos);
           }
+          setNearbyCount(othersRef.current.size);
         },
-
+        
         onClose: (sessionId) => {
           const info = othersRef.current.get(sessionId);
           if (info) {
             info.overlay.setMap(null);
             othersRef.current.delete(sessionId);
+            setNearbyCount(othersRef.current.size);
           }
         },
       });
@@ -189,7 +240,7 @@ export default function MapView() {
       }
     });
 
-    //cleanup
+    // cleanup
     return () => {
       try {
         if (watchId) navigator.geolocation.clearWatch(watchId);
@@ -209,20 +260,21 @@ export default function MapView() {
       });
       othersRef.current.clear();
     };
-  }, [navigate, nickname]);
+  }, [navigate, nickname, userId, isFriendsOnly, friendsSet]);
 
   return (
     <div className="map-page-layout">
       <header className="map-header">
         <div className="header-title">
           <h1>캠프맵</h1>
-          <span>주변 캠퍼 6명</span>
+          <span>{nearbyCount === 0 ? "주변 아무도 없음" : `주변 캠퍼 ${nearbyCount}명`}</span>
         </div>
-        <button 
-        className="settings-button"
-        onClick={() => navigate("/settings")}
+        <button
+          className="settings-button"
+          onClick={() => navigate('/settings')}
         >
-          ⚙️</button>
+          ⚙️
+        </button>
       </header>
 
       <div className="map-controls">
@@ -233,7 +285,7 @@ export default function MapView() {
             <input
               type="checkbox"
               checked={isFriendsOnly}
-              onChange={() => setIsFriendsOnly(!isFriendsOnly)}
+              onChange={() => setIsFriendsOnly((prev) => !prev)}
             />
             <span className="slider round"></span>
           </label>
