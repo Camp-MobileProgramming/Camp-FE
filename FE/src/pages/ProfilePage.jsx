@@ -203,7 +203,32 @@ export default function ProfilePage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        let msg = '친구 신청을 보내는 중 오류가 발생했습니다.';
+  
+        try {
+          const contentType = response.headers.get('Content-Type') || '';
+  
+          if (contentType.includes('application/json')) {
+            // 전역 예외 핸들러로 { "message": "이미 친구입니다" } 내려주는 경우
+            const errBody = await response.json();
+            if (errBody && errBody.message) {
+              msg = errBody.message;
+            }
+          } else {
+            // 기본 에러 HTML인 경우 → 텍스트에서 키워드만 뽑기
+            const text = await response.text();
+            if (text.includes('이미 친구입니다')) {
+              msg = '이미 친구입니다.';
+            } else if (text.includes('이미 요청을 보냈')) {
+              msg = '이미 친구 요청을 보낸 상태입니다.';
+            }
+          }
+        } catch (e) {
+          console.error('parse error response failed', e);
+        }
+  
+        alert(msg);
+        return;
       }
 
       alert('친구 신청을 보냈습니다.');
