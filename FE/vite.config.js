@@ -31,6 +31,7 @@ export default defineConfig({
     proxy: {
       "/api":      { target: "http://localhost:8080", changeOrigin: true },
       "/tracking": { target: "http://localhost:8080", changeOrigin: true, ws: true },
+      "/chat-ws":  { target: "http://localhost:8080", changeOrigin: true, ws: true },
     },
   },
 });
