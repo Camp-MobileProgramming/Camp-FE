@@ -1,12 +1,16 @@
 {
-  "name": "Live Map Tracker",
-  "short_name": "LiveMap",
-  "description": "실시간 위치 공유 지도 서비스",
+  "id": "/",
+  "name": "Campus Friend",
+  "short_name": "Camp",
+  "description": "실시간 위치 공유 • 채팅 • 친구 기능을 가진 캠퍼스 소셜 서비스",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
+
   "background_color": "#ffffff",
   "theme_color": "#2d68ff",
-  "orientation": "portrait-primary",
+
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -17,6 +21,67 @@
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "📍 실시간 지도",
+      "short_name": "지도",
+      "description": "실시간 위치 공유 맵 바로가기",
+      "url": "/map",
+      "icons": [
+        {
+          "src": "/icons/map-shortcut.png",
+          "type": "image/png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "💬 채팅",
+      "short_name": "채팅",
+      "description": "최근 채팅 목록 열기",
+      "url": "/chats",
+      "icons": [
+        {
+          "src": "/icons/chat-shortcut.png",
+          "type": "image/png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "👤 내 프로필",
+      "short_name": "프로필",
+      "description": "내 프로필 확인",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/icons/user-shortcut.png",
+          "type": "image/png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "🤝 친구 목록",
+      "short_name": "친구",
+      "description": "친구/팔로우 목록으로 이동",
+      "url": "/friends",
+      "icons": [
+        {
+          "src": "/icons/friend-shortcut.png",
+          "type": "image/png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ]
 }

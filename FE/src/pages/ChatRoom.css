@@ -138,3 +138,12 @@
   border-color: none;
   box-shadow: none;
 }
+.sender-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 20px;
+  margin-left: 6px;
+}
+

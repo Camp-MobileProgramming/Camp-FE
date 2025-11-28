@@ -10,33 +10,63 @@ export default function ChatRoom() {
 
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
+  const [initialLoaded, setInitialLoaded] = useState(false); // 👈 DB 초기 로딩 끝났는지
   const ws = useRef(null);
   const scrollRef = useRef(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   useEffect(() => {
     if (!myNickname) {
       alert('로그인이 필요합니다.');
       navigate('/login');
-      return;
     }
+  }, [myNickname, navigate]);
 
-    // 추후 WebSocket 주소 추가/ ex) VITE_CHAT_WS_BASE=wss://your-ngrok-url.ngrok-free.dev/chat-ws
-    let wsUrl = import.meta.env.VITE_CHAT_WS_BASE;
+  // 1. DB에서 기존 채팅 내역 불러오기
+  useEffect(() => {
+    if (!myNickname || !targetNickname) return;
 
-    if (!wsUrl) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      wsUrl = `${protocol}//localhost:8080/chat-ws`; // 테스트 위해 하드코딩
+    const loadChats = async () => {
+      try {
+        const res = await fetch(
+          `/api/chats?me=${encodeURIComponent(myNickname)}&target=${encodeURIComponent(targetNickname)}`
+        );
+
+        if (!res.ok) {
+          console.error('채팅 내역 불러오기 실패', res.status);
+          return;
+        }
+
+        const data = await res.json(); // [{ senderNickname, content, ts }, ...]
+        setMessages(data);
+      } catch (e) {
+        console.error('채팅 내역 로드 중 에러', e);
+      } finally {
+        setInitialLoaded(true);
+      }
+    };
+
+    loadChats();
+  }, [myNickname, targetNickname]);
+
+  // 2. WebSocket 연결 (DB 로딩이 끝난 뒤에 연결하도록 의존성에 initialLoaded 추가)
+  useEffect(() => {
+    if (!myNickname || !targetNickname) return;
+    if (!initialLoaded) return; // DB 메시지 먼저 채우고 나서 WS 연결
+
+    let base = import.meta.env.VITE_CHAT_WS_BASE || '/chat-ws';
+    let wsUrl = base;
+
+    if (wsUrl.startsWith('ws://') || wsUrl.startsWith('wss://')) {
+      // 그대로 사용
     } else if (wsUrl.startsWith('/')) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       wsUrl = `${protocol}//${window.location.host}${wsUrl}`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}/${wsUrl}`;
     }
 
+    console.log(' WebSocket 연결:', wsUrl);
     const socket = new WebSocket(wsUrl);
     ws.current = socket;
 
@@ -53,6 +83,7 @@ export default function ChatRoom() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'chat') {
+          // 기존 메시지에 append
           setMessages((prev) => [...prev, data]);
         }
       } catch (e) {
@@ -61,10 +92,12 @@ export default function ChatRoom() {
     };
 
     socket.onerror = (e) => {
-      console.error(e);
+      console.error('WS error:', e);
     };
 
-    socket.onclose = () => {};
+    socket.onclose = () => {
+      console.log('WS closed');
+    };
 
     return () => {
       if (ws.current) {
@@ -72,7 +105,14 @@ export default function ChatRoom() {
         ws.current = null;
       }
     };
-  }, [targetNickname, myNickname, navigate]);
+  }, [myNickname, targetNickname, initialLoaded]);
+
+  //  3. 메시지 변경될 때마다 스크롤 맨 아래로
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -134,8 +174,7 @@ export default function ChatRoom() {
               showTime = true;
             } else {
               const nextTimeKey = getTimeKey(nextMsg.ts);
-              const nextIsSameSender =
-                nextMsg.senderNickname === msg.senderNickname;
+              const nextIsSameSender = nextMsg.senderNickname === msg.senderNickname;
               const nextIsSameTime = nextTimeKey === timeKey;
               showTime = !(nextIsSameSender && nextIsSameTime);
             }
@@ -154,18 +193,12 @@ export default function ChatRoom() {
               className={`message-row ${isMe ? 'my-msg' : 'other-msg'}`}
             >
               <div className="msg-content-col">
-                {!isMe && (
-                  <span className="sender-name">{msg.senderNickname}</span>
-                )}
+                {!isMe && <span className="sender-name">{msg.senderNickname}</span>}
 
                 <div className="bubble-row">
-                  {isMe && showTime && (
-                    <span className="msg-time">{timeString}</span>
-                  )}
+                  {isMe && showTime && <span className="msg-time">{timeString}</span>}
                   <div className="msg-bubble">{msg.content}</div>
-                  {!isMe && showTime && (
-                    <span className="msg-time">{timeString}</span>
-                  )}
+                  {!isMe && showTime && <span className="msg-time">{timeString}</span>}
                 </div>
               </div>
             </div>
@@ -181,11 +214,7 @@ export default function ChatRoom() {
           onKeyDown={handleKeyDown}
           placeholder="메시지를 입력하세요"
         />
-        <ChatButton
-          onClick={handleSend}
-          disabled={!inputValue.trim()}
-          label="전송"
-        />
+        <ChatButton onClick={handleSend} disabled={!inputValue.trim()} label="전송" />
       </div>
     </div>
   );
