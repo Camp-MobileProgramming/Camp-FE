@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';  // ✅ 추가
 import BottomNav from '../components/BottomNav.jsx';
 import './FriendsPage.css';
 
@@ -7,6 +8,7 @@ function FriendsPage() {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate(); // ✅ 추가
 
   useEffect(() => {
     fetchPendingRequests();
@@ -91,6 +93,12 @@ function FriendsPage() {
 
   const hasPending = pending.length > 0;
 
+  // ✅ 친구 아이템 클릭 시 프로필로 이동
+  const handleFriendClick = (friendNickname) => {
+    if (!friendNickname) return;
+    navigate(`/profile/${encodeURIComponent(friendNickname)}`);
+  };
+
   return (
     <div className="friends-page-layout">
       {/* 헤더 */}
@@ -137,13 +145,26 @@ function FriendsPage() {
           ) : (
             <div className="friends-list">
               {friends.map((f, idx) => (
-                <div key={idx} className="friend-item">
+                <div
+                  key={idx}
+                  className="friend-item"
+                  onClick={() => handleFriendClick(f.nickname)}   // 친구 줄 전체 클릭 → 프로필
+                >
                   <div className="friend-avatar">{f.nickname?.[0] || '?'}</div>
                   <div className="friend-info">
                     <p className="friend-name">{f.nickname}</p>
                     <p className="friend-status">친구</p>
                   </div>
-                  <button className="friend-action-btn">···</button>
+                  <button
+                    className="friend-action-btn chat-btn"
+                    onClick={(e) => {
+                      e.stopPropagation(); // 프로필 이동 막기
+                      if (!f.nickname) return;
+                      navigate(`/chat/${encodeURIComponent(f.nickname)}`); // 👉 채팅방으로
+                    }}
+                  >
+                  💬
+                  </button>
                 </div>
               ))}
             </div>

@@ -464,3 +464,17 @@
 .friends-modal-content::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+.chat-btn {
+  font-size: 13px;
+  background: #4f46e5;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-btn:hover {
+  background: #4338ca;
+}
