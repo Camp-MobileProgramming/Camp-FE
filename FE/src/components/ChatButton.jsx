@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ChatButton({ onClick, label = '보내기', disabled = false, ariaLabel = '채팅 전송 버튼', style, ...rest }) {
+export default function ChatButton({ onClick, label = '전송', disabled = false, ariaLabel = '채팅 전송 버튼', style, ...rest }) {
     const baseStyle = {
         padding: '8px 12px',
         borderRadius: 8,

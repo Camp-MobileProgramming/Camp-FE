@@ -182,7 +182,8 @@ export default function ProfilePage() {
 
   // 채팅 / 친구 신청 
   const handleChat = () => {
-    alert('채팅 기능은 추후 추가 예정입니다.');
+    if (!paramNickname) return;
+    navigate(`/chat/${encodeURIComponent(paramNickname)}`);
   };
 
   const handleSendFriendRequest = async () => {

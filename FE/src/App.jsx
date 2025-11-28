@@ -8,6 +8,7 @@ import ChatListPage from './pages/ChatListPage';
 import FriendsPage from './pages/FriendsPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingPage from './pages/SettingPage';
+import ChatRoom from './pages/ChatRoom';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -71,6 +72,11 @@ function App() {
         element={
           isLoggedIn ? <Navigate to="/" replace /> : <SignupPage />
         }
+      />
+
+      <Route
+        path="/chat/:nickname"
+        element={isLoggedIn ? <ChatRoom /> : <Navigate to="/login" replace />}
       />
     </Routes>
   );

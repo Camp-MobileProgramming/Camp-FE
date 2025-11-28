@@ -1,0 +1,126 @@
+.chatlist-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding-bottom: 70px; /* BottomNav 높이만큼 */
+    background-color: #f5f5f5;
+  }
+  
+  .chatlist-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 16px 20px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  
+  .chatlist-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  
+  .chatlist-main {
+    flex: 1;
+    overflow-y: auto;
+  }
+  
+  .chatlist-info,
+  .chatlist-error,
+  .chatlist-empty {
+    padding: 20px;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .chatlist-error {
+    color: #c0392b;
+  }
+  
+  .chatlist-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .chatlist-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+  }
+  
+  .chatlist-item:hover {
+    background-color: #f9f9f9;
+  }
+  
+  .chatlist-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: #dfe6e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: 600;
+    font-size: 18px;
+    color: #2d3436;
+  }
+  
+  .chatlist-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .chatlist-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .chatlist-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3436;
+  }
+  
+  .chatlist-time {
+    font-size: 12px;
+    color: #b2bec3;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+  
+  .chatlist-row-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+  
+  .chatlist-lastmsg {
+    font-size: 13px;
+    color: #636e72;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+  }
+  
+  .chatlist-unread {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background-color: #ff7675;
+    color: #ffffff;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
