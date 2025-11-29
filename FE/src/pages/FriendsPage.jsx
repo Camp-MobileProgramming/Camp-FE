@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';  // ✅ 추가
+import { useNavigate } from 'react-router-dom'; 
 import BottomNav from '../components/BottomNav.jsx';
 import './FriendsPage.css';
 
@@ -8,7 +8,7 @@ function FriendsPage() {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const navigate = useNavigate(); // ✅ 추가
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     fetchPendingRequests();
