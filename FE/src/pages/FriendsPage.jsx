@@ -91,6 +91,13 @@ function FriendsPage() {
     }
   };
 
+  // 친구 요청 거절 (프론트에서만 처리 - 목록에서 제거)
+  const handleReject = (requesterNickname) => {
+    setPending((prev) =>
+      prev.filter((req) => req.nickname !== requesterNickname)
+    );
+  };
+
   const hasPending = pending.length > 0;
 
   // ✅ 친구 아이템 클릭 시 프로필로 이동
@@ -213,9 +220,7 @@ function FriendsPage() {
                         </button>
                         <button
                           className="pending-decline-btn"
-                          onClick={() => {
-                            alert('거절 기능은 향후 추가될 예정입니다.');
-                          }}
+                          onClick={() => handleReject(req.nickname)}
                         >
                           거절
                         </button>
