@@ -8,20 +8,20 @@ export default function MapView() {
   const mapRef = useRef(null);
   const kakaoMapRef = useRef(null);
   const myMarkerRef = useRef(null);        // 내 위치 CustomOverlay
-  const othersRef = useRef(new Map());     // 다른 사람들: Map<sessionId, { overlay, el, nickname }>
+  const othersRef = useRef(new Map());     // Map<sessionId, { overlay, el, nickname }>
   const wsRef = useRef(null);
 
-  const [isFriendsOnly, setIsFriendsOnly] = useState(true);
-  const [friendsSet, setFriendsSet] = useState(new Set()); // 친구 닉네임 목록
+  // 처음에는 "모두 보기"가 기본이도록
+  const [isFriendsOnly, setIsFriendsOnly] = useState(false);
+  const [friendsSet, setFriendsSet] = useState(new Set());
   const [friendsCount, setFriendsCount] = useState(0);
   const [nearbyCount, setNearbyCount] = useState(0);
   const navigate = useNavigate();
 
-  // 로그인 시 저장해 둔 정보 사용
   const nickname = localStorage.getItem('nickname') || '나';
   const userId = localStorage.getItem('userId'); // DB PK (로그인 시 저장했다고 가정)
 
-  // 친구목록
+  // 친구 목록 불러오기 
   useEffect(() => {
     const fetchFriends = async () => {
       try {
@@ -43,7 +43,7 @@ export default function MapView() {
         const data = await res.json();
         const set = new Set(
           data
-            .map((f) => f.nickname) 
+            .map((f) => f.nickname)
             .filter(Boolean)
         );
         setFriendsSet(set);
@@ -55,6 +55,8 @@ export default function MapView() {
 
     fetchFriends();
   }, []);
+
+  //  WebSocket + 내 위치 세팅 (한 번만)
   useEffect(() => {
     const { kakao } = window;
 
@@ -114,9 +116,9 @@ export default function MapView() {
         userId || 'anon-' + Math.random().toString(36).slice(2, 8); // DB 없으면 임시값
 
       const ws = connectWS({
-        userId: String(effectiveUserId), // DB PK 사용
+        userId: String(effectiveUserId),
         postId: 'room-1',
-        nickname,                        // 서버에 join 시 전달
+        nickname,
 
         onJoinAck: (m) => {
           if (ws) ws.sessionId = m.sessionId;
@@ -139,22 +141,10 @@ export default function MapView() {
             return;
           }
 
-          // 다른 사람들 위치
+          // ── 다른 사람들 위치 업데이트 (친구 여부 상관 없이 일단 다 유지) ──
           const others = othersRef.current;
           const rawNickname = otherNickname || sessionId?.slice(-4) || 'USER';
           const displayName = rawNickname;
-
-          // 친구 공개 모드일 때, 친구가 아니면 marker 생성/유지 안 함
-          if (isFriendsOnly && friendsSet.size > 0 && !friendsSet.has(rawNickname)) {
-            // 이미 존재하던 마커면 지우기
-            if (others.has(sessionId)) {
-              const info = others.get(sessionId);
-              info.overlay.setMap(null);
-              others.delete(sessionId);
-            }
-            setNearbyCount(othersRef.current.size);
-            return;
-          }
 
           if (!others.has(sessionId)) {
             // 처음 보는 세션 → 동그라미 마커 생성
@@ -179,7 +169,7 @@ export default function MapView() {
               userSelect: 'none',
             });
 
-            // 다른 사람 마커 클릭 -> 그 사람 닉네임 기반 프로필로 이동
+            // 다른 사람 마커 클릭 → 그 사람 프로필
             el.addEventListener('click', () => {
               if (otherNickname) {
                 navigate(`/profile/${encodeURIComponent(otherNickname)}`);
@@ -199,9 +189,11 @@ export default function MapView() {
             const info = others.get(sessionId);
             info.overlay.setPosition(pos);
           }
+
+          // 필터 적용은 별도 useEffect에서 처리할 거라 여기선 전체 수만 반영
           setNearbyCount(othersRef.current.size);
         },
-        
+
         onClose: (sessionId) => {
           const info = othersRef.current.get(sessionId);
           if (info) {
@@ -260,14 +252,44 @@ export default function MapView() {
       });
       othersRef.current.clear();
     };
-  }, [navigate, nickname, userId, isFriendsOnly, friendsSet]);
+  }, [navigate, nickname, userId]); // isFriendsOnly, friendsSet 제거
+
+  // 친구 공개 필터만 별도 처리
+  useEffect(() => {
+    const map = kakaoMapRef.current;
+    if (!map) return;
+
+    const others = othersRef.current;
+
+    let visibleCount = 0;
+
+    others.forEach((info) => {
+      const isFriend = friendsSet.has(info.nickname);
+      const shouldHide =
+        isFriendsOnly && friendsSet.size > 0 && !isFriend;
+
+      if (shouldHide) {
+        info.overlay.setMap(null);       // 지도에서 감추기
+      } else {
+        info.overlay.setMap(map);        // 다시 보여주기
+        visibleCount++;
+      }
+    });
+
+    // 친구모드에 따라 실제 보이는 사람 수로 업데이트
+    setNearbyCount(visibleCount);
+  }, [isFriendsOnly, friendsSet]); // ✅ 필터 관련 상태만 의존
 
   return (
     <div className="map-page-layout">
       <header className="map-header">
         <div className="header-title">
           <h1>캠프맵</h1>
-          <span>{nearbyCount === 0 ? "주변 아무도 없음" : `주변 캠퍼 ${nearbyCount}명`}</span>
+          <span>
+            {nearbyCount === 0
+              ? "주변 아무도 없음"
+              : `주변 캠퍼 ${nearbyCount}명`}
+          </span>
         </div>
         <button
           className="settings-button"
@@ -289,6 +311,11 @@ export default function MapView() {
             />
             <span className="slider round"></span>
           </label>
+          {friendsCount > 0 && (
+            <span className="friends-count-label">
+              (내 친구 {friendsCount}명)
+            </span>
+          )}
         </div>
       </div>
 
