@@ -39,6 +39,12 @@ export default function ChatListPage() {
 
         const data = await res.json();
         // data: [{ roomKey, otherNickname, lastMessage, lastTs, unreadCount }, ...]
+        // Ensure rooms are sorted with latest first (descending by lastTs)
+        data.sort((a, b) => {
+          const ta = a.lastTs ? new Date(a.lastTs).getTime() : 0;
+          const tb = b.lastTs ? new Date(b.lastTs).getTime() : 0;
+          return tb - ta;
+        });
         setRooms(data);
       } catch (e) {
         console.error('[ChatList] 에러', e);
@@ -49,6 +55,31 @@ export default function ChatListPage() {
     };
 
     loadRooms();
+  }, [myNickname]);
+
+  // Polling to refresh rooms periodically so state stays in sync when other client changes
+  useEffect(() => {
+    if (!myNickname) return;
+    const id = setInterval(() => {
+      (async () => {
+        try {
+          const url = `/api/chats/rooms?me=${encodeURIComponent(myNickname)}`;
+          const res = await fetch(url);
+          if (!res.ok) return;
+          const data = await res.json();
+          data.sort((a, b) => {
+            const ta = a.lastTs ? new Date(a.lastTs).getTime() : 0;
+            const tb = b.lastTs ? new Date(b.lastTs).getTime() : 0;
+            return tb - ta;
+          });
+          setRooms(data);
+        } catch (e) {
+          // ignore polling errors
+        }
+      })();
+    }, 10000);
+
+    return () => clearInterval(id);
   }, [myNickname]);
 
   const handleRoomClick = (otherNickname) => {
