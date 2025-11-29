@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';  // ✅ 추가
+import { useNavigate } from 'react-router-dom'; 
 import BottomNav from '../components/BottomNav.jsx';
 import './FriendsPage.css';
 
@@ -8,7 +8,7 @@ function FriendsPage() {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const navigate = useNavigate(); // ✅ 추가
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     fetchPendingRequests();
@@ -91,16 +91,45 @@ function FriendsPage() {
     }
   };
 
-  // 친구 요청 거절 (프론트에서만 처리 - 목록에서 제거)
-  const handleReject = (requesterNickname) => {
-    setPending((prev) =>
-      prev.filter((req) => req.nickname !== requesterNickname)
-    );
+  // 친구 요청 거절 
+  const handleReject = async (requesterNickname) => {
+    if (!window.confirm(`${requesterNickname}님의 친구 요청을 거절하시겠습니까?`)) return;
+  
+    try {
+      const myNick = localStorage.getItem('nickname');
+      const encodedNick = encodeURIComponent(myNick);
+  
+      const res = await fetch('/api/friends/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${encodedNick}`,
+        },
+        body: JSON.stringify({ requesterNickname }),
+      });
+  
+      if (!res.ok) {
+        let msg = '요청 거절 중 오류가 발생했습니다.';
+        try {
+          const errBody = await res.json();
+          if (errBody && errBody.message) msg = errBody.message;
+        } catch (_) {}
+        alert(msg);
+        return;
+      }
+  
+      // 성공 시 로컬 목록에서도 제거
+      setPending((prev) => prev.filter((req) => req.nickname !== requesterNickname));
+    } catch (e) {
+      console.error('handleReject error', e);
+      alert('요청 거절 중 오류가 발생했습니다.');
+    }
   };
+  
 
   const hasPending = pending.length > 0;
 
-  // ✅ 친구 아이템 클릭 시 프로필로 이동
+  // 친구 아이템 클릭 시 프로필로 이동
   const handleFriendClick = (friendNickname) => {
     if (!friendNickname) return;
     navigate(`/profile/${encodeURIComponent(friendNickname)}`);
