@@ -38,8 +38,7 @@ export default function ChatListPage() {
         }
 
         const data = await res.json();
-        // data: [{ roomKey, otherNickname, lastMessage, lastTs, unreadCount }, ...]
-        // Ensure rooms are sorted with latest first (descending by lastTs)
+        //정렬
         data.sort((a, b) => {
           const ta = a.lastTs ? new Date(a.lastTs).getTime() : 0;
           const tb = b.lastTs ? new Date(b.lastTs).getTime() : 0;
