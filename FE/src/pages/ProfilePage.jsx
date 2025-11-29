@@ -181,8 +181,34 @@ export default function ProfilePage() {
   };
 
   // 채팅 / 친구 신청 
-  const handleChat = () => {
+  const handleChat = async () => {
     if (!paramNickname) return;
+
+    try {
+      const myNick = localStorage.getItem('nickname');
+      if (!myNick) {
+        navigate('/login');
+        return;
+      }
+
+      // Try to find an existing room to avoid creating duplicates
+      const res = await fetch(`/api/chats/rooms?me=${encodeURIComponent(myNick)}`);
+      if (res.ok) {
+        const rooms = await res.json();
+        const found = Array.isArray(rooms)
+          ? rooms.find((r) => r.otherNickname === paramNickname)
+          : null;
+
+        if (found && found.roomKey) {
+          navigate(`/chat/${encodeURIComponent(paramNickname)}?roomKey=${encodeURIComponent(found.roomKey)}`);
+          return;
+        }
+      }
+    } catch (e) {
+      // ignore — fallback to normal navigation
+      console.error('채팅방 조회 중 에러', e);
+    }
+
     navigate(`/chat/${encodeURIComponent(paramNickname)}`);
   };
 

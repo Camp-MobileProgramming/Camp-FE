@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ChatButton from '../components/ChatButton';
 import './ChatRoom.css';
 
@@ -7,6 +7,9 @@ export default function ChatRoom() {
   const { nickname: targetNickname } = useParams();
   const navigate = useNavigate();
   const myNickname = localStorage.getItem('nickname');
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const roomKeyFromQuery = urlParams.get('roomKey');
 
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -27,9 +30,25 @@ export default function ChatRoom() {
 
     const loadChats = async () => {
       try {
-        const res = await fetch(
-          `/api/chats?me=${encodeURIComponent(myNickname)}&target=${encodeURIComponent(targetNickname)}`
-        );
+        let res;
+
+        if (roomKeyFromQuery) {
+          // If caller provided a roomKey, try loading by roomKey first
+          res = await fetch(
+            `/api/chats?roomKey=${encodeURIComponent(roomKeyFromQuery)}`
+          );
+
+          // fallback to me/target if roomKey call not supported
+          if (!res.ok) {
+            res = await fetch(
+              `/api/chats?me=${encodeURIComponent(myNickname)}&target=${encodeURIComponent(targetNickname)}`
+            );
+          }
+        } else {
+          res = await fetch(
+            `/api/chats?me=${encodeURIComponent(myNickname)}&target=${encodeURIComponent(targetNickname)}`
+          );
+        }
 
         if (!res.ok) {
           console.error('채팅 내역 불러오기 실패', res.status);
@@ -76,6 +95,12 @@ export default function ChatRoom() {
         myNickname,
         targetNickname,
       };
+
+      // Include roomKey when available so server can attach to existing room
+      if (roomKeyFromQuery) {
+        joinPayload.roomKey = roomKeyFromQuery;
+      }
+
       socket.send(JSON.stringify(joinPayload));
     };
 
