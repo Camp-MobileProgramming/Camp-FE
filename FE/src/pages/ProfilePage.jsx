@@ -40,6 +40,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // 편집 모드에서 관심사를 문자열로 관리
+  const [interestsInput, setInterestsInput] = useState('');
 
   // 프로필 & 메모 불러오기
   useEffect(() => {
@@ -152,6 +155,12 @@ export default function ProfilePage() {
     try {
       const encodedNick = encodeURIComponent(myNickname);
 
+      // 편집 모드에서 입력한 문자열을 배열로 변환
+      const interestsArray = interestsInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
@@ -161,7 +170,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           statusMessage,
           intro,
-          interests, // ['스터디', '운동'] 이런 배열
+          interests: interestsArray, // ['스터디', '운동'] 이런 배열
           friends,   // 숫자 하나
         }),
       });
@@ -170,6 +179,8 @@ export default function ProfilePage() {
         throw new Error(`HTTP ${response.status}`);
       }
 
+      // 저장 성공 시 interests 상태도 업데이트
+      setInterests(interestsArray);
       alert('프로필이 저장되었습니다.');
       setEditing(false);
     } catch (err) {
@@ -384,7 +395,15 @@ export default function ProfilePage() {
           {isMe && (
             <button
               className="profile-edit-btn"
-              onClick={() => (editing ? handleSave() : setEditing(true))}
+              onClick={() => {
+                if (editing) {
+                  handleSave();
+                } else {
+                  // 편집 모드 시작 시 현재 관심사를 문자열로 변환
+                  setInterestsInput(interests.join(', '));
+                  setEditing(true);
+                }
+              }}
               disabled={saving}
             >
               {editing ? (saving ? '저장 중...' : '저장하기') : '프로필 편집'}
@@ -434,15 +453,8 @@ export default function ProfilePage() {
             <input
               className="profile-status-input"
               placeholder="예: 스터디, 독서, 운동"
-              value={interests.join(', ')}
-              onChange={(e) =>
-                setInterests(
-                  e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                )
-              }
+              value={interestsInput}
+              onChange={(e) => setInterestsInput(e.target.value)}
             />
           ) : (
             <div className="profile-tags">

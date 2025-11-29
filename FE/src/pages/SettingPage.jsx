@@ -160,34 +160,6 @@ function SettingPage() {
             </div>
             </div>
 
-            {/* 개인정보 보호 섹션 */}
-            <div className="setting-section privacy-section">
-            <div className="section-header">
-                {/* 개인정보 보호 이모티콘 */}
-                <svg className="section-icon location-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="11" width="14" height="10" rx="2" fill="white" stroke="#5B8DEE" strokeWidth="2"/>
-                <path d="M8 11V7C8 4.79 9.79 3 12 3C14.21 3 16 4.79 16 7V11" stroke="#5B8DEE" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="12" cy="16" r="1.5" fill="#5B8DEE"/>
-                </svg>
-                <h2>개인정보 보호</h2>
-            </div>
-
-            <div className="menu-item" onClick={() => {}}>
-                <div className="menu-label">비밀번호 변경</div>
-                <button className="arrow-button">›</button>
-            </div>
-
-            <div className="menu-item" onClick={() => {}}>
-                <div className="menu-label">차단 목록</div>
-                <button className="arrow-button">›</button>
-            </div>
-
-            <div className="menu-item" onClick={() => {}}>
-                <div className="menu-label">개인정보 처리방침</div>
-                <button className="arrow-button">›</button>
-            </div>
-            </div>
-
             {/* 버전 정보 섹션 */}
             <div className="setting-section version-section">
             <div className="info-item">
@@ -213,7 +185,7 @@ function SettingPage() {
             </button>
             </div>
         </div>
-        </div>
+    </div>
     );
 }
 
