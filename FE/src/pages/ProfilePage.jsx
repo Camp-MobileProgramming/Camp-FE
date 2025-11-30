@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [intro, setIntro] = useState('');
   const [interests, setInterests] = useState([]);
   const [friends, setFriends] = useState(DEFAULT_FRIENDS); // friends만 사용
+  const [friendsLoading, setFriendsLoading] = useState(false);
 
   // 상대 프로필일 때만 보이는 메모
   const [memo, setMemo] = useState('');
@@ -132,7 +133,65 @@ export default function ProfilePage() {
 
     fetchProfile();
     fetchMemo();
+    fetchFriendsCount();
   }, [isMe, myNickname, paramNickname]);
+
+  // 친구 수 가져오기 (백엔드에서 count API를 제공하면 우선 사용, 아니면 list로 대체)
+  const fetchFriendsCount = async () => {
+    const target = isMe ? myNickname : paramNickname;
+    if (!target) return;
+
+    setFriendsLoading(true);
+    try {
+      // 1) try count endpoint: { count: number } or raw number
+      let res = await fetch(`/api/friends/count?nickname=${encodeURIComponent(target)}`);
+      if (res.ok) {
+        try {
+          const data = await res.json();
+          if (typeof data === 'number') {
+            setFriends(data);
+            return;
+          }
+          if (data && typeof data.count === 'number') {
+            setFriends(data.count);
+            return;
+          }
+        } catch (e) {
+          // not JSON — ignore and try fallback
+        }
+      }
+
+      // 2) fallback: try list endpoint for the target (may return array)
+      res = await fetch(`/api/friends/list?nickname=${encodeURIComponent(target)}`);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          setFriends(list.length);
+          return;
+        }
+      }
+
+      // 3) last resort: if viewing own profile, try authenticated /api/friends/list
+      if (isMe) {
+        const myNick = localStorage.getItem('nickname');
+        if (myNick) {
+          const encoded = encodeURIComponent(myNick);
+          res = await fetch('/api/friends/list', { headers: { Authorization: `Bearer ${encoded}` } });
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list)) {
+              setFriends(list.length);
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('fetchFriendsCount error', e);
+    } finally {
+      setFriendsLoading(false);
+    }
+  };
 
   // 뒤로가기 / 로그아웃
   const handleBack = () => navigate(-1);
@@ -504,8 +563,15 @@ export default function ProfilePage() {
           </div>
 
           <div className="profile-stats-row">
-            <div className="profile-stat">
-              <div className="profile-stat-number">{friends}</div>
+            <div
+              className={`profile-stat ${friends > 0 ? 'clickable' : ''}`}
+              onClick={() => {
+                if (friends > 0) navigate('/friends');
+              }}
+            >
+              <div className="profile-stat-number">
+                {friendsLoading ? '...' : friends}
+              </div>
               <div className="profile-stat-label">친구</div>
             </div>
           </div>

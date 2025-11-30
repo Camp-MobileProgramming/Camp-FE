@@ -181,6 +181,20 @@
   margin-bottom: 2px;
 }
 
+/* 클릭 가능한 통계 (친구 수 등) */
+.profile-stat.clickable {
+  cursor: pointer;
+}
+
+.profile-stat.clickable .profile-stat-number {
+  transition: color 0.15s ease, transform 0.12s ease;
+}
+
+.profile-stat.clickable:hover .profile-stat-number {
+  color: #3730a3;
+  transform: translateY(-2px);
+}
+
 .profile-stat-label {
   font-size: 11px;
   color: #6b7280;
