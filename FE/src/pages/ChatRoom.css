@@ -71,12 +71,16 @@
   gap: 4px;
 }
 
+/* ✅ 내 메시지는 오른쪽으로 붙이기 */
 .my-msg .bubble-row {
-  flex-direction: row;
+  justify-content: flex-end;
+  flex-direction: row; /* 말풍선 → 시간 순서 유지 */
 }
 
+/* ✅ 상대 메시지는 왼쪽으로 붙이기 */
 .other-msg .bubble-row {
-  flex-direction: row-reverse;
+  justify-content: flex-start;
+  flex-direction: row; /* row-reverse 제거! */
 }
 
 .msg-bubble {
