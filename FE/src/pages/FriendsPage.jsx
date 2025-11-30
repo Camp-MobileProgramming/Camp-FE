@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; 
 import BottomNav from '../components/BottomNav.jsx';
-import './FriendsPage.css';
+// [추가] 알림 갱신 함수 가져오기
+import { useNotification } from '../components/NotificationContext';
 
 function FriendsPage() {
   const [pending, setPending] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const navigate = useNavigate(); 
+
+  // [추가] 알림 새로고침 함수
+  const { refreshCounts } = useNotification();
 
   useEffect(() => {
     fetchPendingRequests();
@@ -82,7 +83,11 @@ function FriendsPage() {
       alert(`${requesterNickname}님의 친구 요청을 수락했습니다.`);
 
       await fetchPendingRequests();
-      await fetchFriendList(); // 수락 후 목록 갱신
+      await fetchFriendList(); 
+      
+      // [중요] 수락했으니 하단 알림 배지도 즉시 갱신!
+      refreshCounts();
+
     } catch (err) {
       console.error('handleAccept error', err);
       alert('요청 수락 중 오류가 발생했습니다.');
@@ -91,186 +96,65 @@ function FriendsPage() {
     }
   };
 
-  // 친구 요청 거절 
-  const handleReject = async (requesterNickname) => {
-    if (!window.confirm(`${requesterNickname}님의 친구 요청을 거절하시겠습니까?`)) return;
-  
-    try {
-      const myNick = localStorage.getItem('nickname');
-      const encodedNick = encodeURIComponent(myNick);
-  
-      const res = await fetch('/api/friends/reject', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${encodedNick}`,
-        },
-        body: JSON.stringify({ requesterNickname }),
-      });
-  
-      if (!res.ok) {
-        let msg = '요청 거절 중 오류가 발생했습니다.';
-        try {
-          const errBody = await res.json();
-          if (errBody && errBody.message) msg = errBody.message;
-        } catch (_) {}
-        alert(msg);
-        return;
-      }
-  
-      // 성공 시 로컬 목록에서도 제거
-      setPending((prev) => prev.filter((req) => req.nickname !== requesterNickname));
-    } catch (e) {
-      console.error('handleReject error', e);
-      alert('요청 거절 중 오류가 발생했습니다.');
-    }
-  };
-  
-
-  const hasPending = pending.length > 0;
-
-  // 친구 아이템 클릭 시 프로필로 이동
-  const handleFriendClick = (friendNickname) => {
-    if (!friendNickname) return;
-    navigate(`/profile/${encodeURIComponent(friendNickname)}`);
-  };
-
   return (
-    <div className="friends-page-layout">
-      {/* 헤더 */}
-      <header className="friends-header">
-        <h1 className="friends-header-title">친구</h1>
-        <div style={{ width: '40px' }} />
-      </header>
+    <div style={{ paddingBottom: '70px' }}>
+      <div style={{ padding: '20px' }}>
 
-      <main className="friends-main">
-        {/* 상단 카드: 수락 대기 버튼 */}
-        <section className="friends-pending-card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <h3 className="friends-pending-title">친구 신청</h3>
-              <p className="friends-pending-subtitle">
-                {hasPending
-                  ? `${pending.length}개의 친구 신청이 있습니다`
-                  : '새로운 친구 신청이 없습니다'}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className={`friends-pending-btn ${hasPending ? 'active' : 'inactive'}`}
-              disabled={!hasPending}
-            >
-              <span className="friends-pending-icon">→</span>
-            </button>
-          </div>
-        </section>
+        <h1>친구 목록 페이지</h1>
 
-        {/* 친구 목록 섹션 */}
-        <section className="friends-section">
-          <h2 className="friends-section-title">
-            친구 목록
-            {friends.length > 0 && <span className="friends-count">{friends.length}</span>}
-          </h2>
-
+        <section style={{ marginTop: '20px' }}>
+          <h2>내 친구 목록</h2>
           {friends.length === 0 ? (
-            <div className="friends-empty">
-              <p className="friends-empty-icon">👥</p>
-              <p className="friends-empty-text">아직 친구가 없습니다.</p>
-              <p className="friends-empty-subtext">프로필에서 친구를 찾아 신청해보세요!</p>
-            </div>
+            <p>아직 친구가 없습니다.</p>
           ) : (
-            <div className="friends-list">
+            <ul style={{ paddingLeft: '16px' }}>
               {friends.map((f, idx) => (
-                <div
-                  key={idx}
-                  className="friend-item"
-                  onClick={() => handleFriendClick(f.nickname)}   // 친구 줄 전체 클릭 → 프로필
-                >
-                  <div className="friend-avatar">{f.nickname?.[0] || '?'}</div>
-                  <div className="friend-info">
-                    <p className="friend-name">{f.nickname}</p>
-                    <p className="friend-status">친구</p>
-                  </div>
-                  <button
-                    className="friend-action-btn chat-btn"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 프로필 이동 막기
-                      if (!f.nickname) return;
-                      navigate(`/chat/${encodeURIComponent(f.nickname)}`); // 👉 채팅방으로
-                    }}
-                  >
-                  💬
-                  </button>
-                </div>
+                <li key={idx} style={{ marginBottom: '8px' }}>
+                  {f.nickname}
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
-      </main>
 
-      {/* 모달 팝업 */}
-      {showModal && (
-        <div className="friends-modal-overlay" onClick={() => setShowModal(false)}>
-          <div
-            className="friends-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="friends-modal-header">
-              <h2>친구 신청 ({pending.length})</h2>
-              <button
-                className="friends-modal-close"
-                onClick={() => setShowModal(false)}
-              >
-                ✕
-              </button>
-            </div>
+        <section style={{ marginTop: '30px' }}>
+          <h2>수락 대기중</h2>
 
-            <div className="friends-modal-content">
-              {pending.length === 0 ? (
-                <div className="friends-modal-empty">
-                  <p>수락 대기중인 친구 요청이 없습니다.</p>
-                </div>
-              ) : (
-                <div className="pending-requests-list">
-                  {pending.map((req, idx) => (
-                    <div key={idx} className="pending-request-item">
-                      <div className="pending-avatar">{req.nickname?.[0] || '?'}</div>
-                      <div className="pending-info">
-                        <p className="pending-name">{req.nickname}</p>
-                        <p className="pending-time">친구 신청이 도착했습니다</p>
-                      </div>
-                      <div className="pending-actions">
-                        <button
-                          className="pending-accept-btn"
-                          onClick={() => handleAccept(req.nickname)}
-                          disabled={loading}
-                        >
-                          {loading ? '처리중…' : '수락'}
-                        </button>
-                        <button
-                          className="pending-decline-btn"
-                          onClick={() => handleReject(req.nickname)}
-                        >
-                          거절
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {pending.length === 0 ? (
+            <p>수락 대기중인 친구 요청이 없습니다.</p>
+          ) : (
+            <ul style={{ paddingLeft: '16px' }}>
+              {pending.map((req, idx) => (
+                <li key={idx} style={{
+                  marginBottom: '8px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span>{req.nickname}</span>
 
-            <div className="friends-modal-footer">
-              <button
-                className="friends-modal-close-btn"
-                onClick={() => setShowModal(false)}
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                  <button
+                    onClick={() => handleAccept(req.nickname)}
+                    disabled={loading}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#4CAF50',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    {loading ? '처리중…' : '수락'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+      </div>
 
       <BottomNav />
     </div>
