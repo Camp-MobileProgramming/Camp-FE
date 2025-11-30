@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const DEFAULT_INTRO_OTHER = '컴퓨터공학과 2학년입니다.';
 
   const DEFAULT_INTERESTS = ['스터디', '독서', '운동', '영화'];
-  const DEFAULT_FRIENDS =0; // 친구 수 기본값
+  const DEFAULT_FRIENDS = 0; // 친구 수 기본값
 
   // ---- 상태값들 (백엔드 연동 전 그냥 기본값) ----
   const [statusMessage, setStatusMessage] = useState('');

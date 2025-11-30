@@ -33,7 +33,12 @@ export function NotificationProvider({ children }) {
         friendCount = Array.isArray(friendData) ? friendData.length : 0;
       }
 
-      const chatCount = 0; 
+      let chatCount = 0; 
+      const chatRes = await fetch(`/api/chats/unread-count?me=${encodedNick}`);
+      if (chatRes.ok) {
+        const chatData = await chatRes.json();
+        chatCount = chatData.total ?? 0;
+      }
       setCounts({
         campRequest: friendCount,
         chat: chatCount

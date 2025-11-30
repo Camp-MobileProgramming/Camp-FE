@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ChatButton from '../components/ChatButton';
 import './ChatRoom.css';
-
+import { useNotification } from '../components/NotificationContext';
 export default function ChatRoom() {
   const { nickname: targetNickname } = useParams();
   const navigate = useNavigate();
@@ -10,10 +10,10 @@ export default function ChatRoom() {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const roomKeyFromQuery = urlParams.get('roomKey');
-
+  const { refreshCounts } = useNotification();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
-  const [initialLoaded, setInitialLoaded] = useState(false); // 👈 DB 초기 로딩 끝났는지
+  const [initialLoaded, setInitialLoaded] = useState(false); // DB 초기 로딩 끝났는지
   const ws = useRef(null);
   const scrollRef = useRef(null);
 
@@ -61,11 +61,12 @@ export default function ChatRoom() {
         console.error('채팅 내역 로드 중 에러', e);
       } finally {
         setInitialLoaded(true);
+        refreshCounts();
       }
     };
 
     loadChats();
-  }, [myNickname, targetNickname]);
+  }, [myNickname, targetNickname, refreshCounts]);
 
   // 2. WebSocket 연결 (DB 로딩이 끝난 뒤에 연결하도록 의존성에 initialLoaded 추가)
   useEffect(() => {
