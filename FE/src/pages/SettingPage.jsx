@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // components 폴더에서 가져오기
 import { useNotification } from '../components/NotificationContext';
@@ -13,6 +13,66 @@ function SettingPage() {
     // 위치 설정은 로컬 state 사용
     const [locationShare, setLocationShare] = useState(false);
     const [locationVisibility, setLocationVisibility] = useState('friends');
+    const [saving, setSaving] = useState(false);
+
+    // 설정 불러오기
+    useEffect(() => {
+        const fetchSettings = async () => {
+            const nickname = localStorage.getItem('nickname');
+            if (!nickname) return;
+
+            try {
+                const res = await fetch('/api/settings/me', {
+                    headers: {
+                        'Authorization': `Bearer ${encodeURIComponent(nickname)}`,
+                    },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setLocationShare(data.locationShare ?? false);
+                    setLocationVisibility(data.locationVisibility ?? 'friends');
+                    // 알림 설정도 불러오기 (필요시)
+                }
+            } catch (err) {
+                console.error('설정 불러오기 실패:', err);
+            }
+        };
+
+        fetchSettings();
+    }, []);
+
+    // 설정 저장
+    const saveSettings = async (updates) => {
+        const nickname = localStorage.getItem('nickname');
+        if (!nickname || saving) return;
+
+        setSaving(true);
+        try {
+            const res = await fetch('/api/settings/me', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${encodeURIComponent(nickname)}`,
+                },
+                body: JSON.stringify({
+                    locationShare,
+                    locationVisibility,
+                    chatAlarm: settings.chatAlarm,
+                    campRequestAlarm: settings.campRequestAlarm,
+                    ...updates,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error('설정 저장 실패');
+            }
+        } catch (err) {
+            console.error('설정 저장 오류:', err);
+            alert('설정 저장 중 오류가 발생했습니다.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -72,22 +132,42 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={locationShare}
-                    onChange={(e) => setLocationShare(e.target.checked)}
+                    onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setLocationShare(newValue);
+                        saveSettings({ locationShare: newValue });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
             </div>
 
             <div className="visibility-options">
-                <div className={`visibility-option ${locationVisibility === 'all' ? 'selected' : ''}`} onClick={() => setLocationVisibility('all')}>
+                <div className={`visibility-option ${locationVisibility === 'all' ? 'selected' : ''}`} onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('all');
+                        saveSettings({ locationVisibility: 'all' });
+                    }
+                }}>
                 <div className="radio-button">{locationVisibility === 'all' && <div className="radio-dot"></div>}</div>
                 <div className="visibility-text"><div className="visibility-label">전체 공개</div><div className="visibility-description">모든 캠퍼에게 위치가 표시됩니다</div></div>
                 </div>
-                <div className={`visibility-option ${locationVisibility === 'friends' ? 'selected' : ''}`} onClick={() => setLocationVisibility('friends')}>
+                <div className={`visibility-option ${locationVisibility === 'friends' ? 'selected' : ''}`} onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('friends');
+                        saveSettings({ locationVisibility: 'friends' });
+                    }
+                }}>
                 <div className="radio-button">{locationVisibility === 'friends' && <div className="radio-dot"></div>}</div>
                 <div className="visibility-text"><div className="visibility-label">친구 공개</div><div className="visibility-description">친구에게만 위치가 표시됩니다</div></div>
                 </div>
-                <div className={`visibility-option ${locationVisibility === 'none' ? 'selected' : ''}`} onClick={() => setLocationVisibility('none')}>
+                <div className={`visibility-option ${locationVisibility === 'none' ? 'selected' : ''}`} onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('none');
+                        saveSettings({ locationVisibility: 'none' });
+                    }
+                }}>
                 <div className="radio-button">{locationVisibility === 'none' && <div className="radio-dot"></div>}</div>
                 <div className="visibility-text"><div className="visibility-label">비공개</div><div className="visibility-description">누구에게도 위치가 표시되지 않습니다</div></div>
                 </div>
@@ -112,7 +192,11 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={settings.chatAlarm} 
-                    onChange={() => toggleSetting('chatAlarm')}
+                    onChange={() => {
+                        toggleSetting('chatAlarm');
+                        saveSettings({ chatAlarm: !settings.chatAlarm });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
@@ -127,7 +211,11 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={settings.campRequestAlarm}
-                    onChange={() => toggleSetting('campRequestAlarm')}
+                    onChange={() => {
+                        toggleSetting('campRequestAlarm');
+                        saveSettings({ campRequestAlarm: !settings.campRequestAlarm });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
