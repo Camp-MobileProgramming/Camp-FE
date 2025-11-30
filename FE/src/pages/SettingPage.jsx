@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { connectWS } from '../shared/ws.js';
 import './SettingPage.css';
 
 function SettingPage() {
@@ -8,6 +9,148 @@ function SettingPage() {
     const [locationVisibility, setLocationVisibility] = useState('friends'); // 'all', 'friends', 'none'
     const [chatAlarm, setChatAlarm] = useState(false);
     const [campRequestAlarm, setCampRequestAlarm] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const watchIdRef = useRef(null);
+    const wsRef = useRef(null);
+
+    // 설정 불러오기
+    useEffect(() => {
+        const fetchSettings = async () => {
+            const nickname = localStorage.getItem('nickname');
+            if (!nickname) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/settings/me', {
+                    headers: {
+                        'Authorization': `Bearer ${encodeURIComponent(nickname)}`,
+                    },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setLocationShare(data.locationShare ?? false);
+                    setLocationVisibility(data.locationVisibility ?? 'friends');
+                    setChatAlarm(data.chatAlarm ?? false);
+                    setCampRequestAlarm(data.campRequestAlarm ?? false);
+                }
+            } catch (err) {
+                console.error('설정 불러오기 실패:', err);
+            }
+        };
+
+        fetchSettings();
+    }, []);
+
+    // WebSocket 연결 및 위치 추적
+    useEffect(() => {
+        const nickname = localStorage.getItem('nickname');
+        const userId = localStorage.getItem('userId');
+        
+        if (!nickname) return;
+
+        if (locationShare && locationVisibility !== 'none') {
+            // WebSocket 연결
+            if (!wsRef.current) {
+                const effectiveUserId = userId || 'anon-' + Math.random().toString(36).slice(2, 8);
+                
+                wsRef.current = connectWS({
+                    userId: String(effectiveUserId),
+                    postId: 'room-1',
+                    nickname,
+                    onJoinAck: (m) => {
+                        if (wsRef.current) wsRef.current.sessionId = m.sessionId;
+                    },
+                    onLocation: () => {},
+                    onClose: () => {},
+                });
+            }
+
+            // GPS 추적 시작
+            if (navigator.geolocation && !watchIdRef.current) {
+                let lastSent = 0;
+                const MIN_INTERVAL = 800;
+
+                watchIdRef.current = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const now = Date.now();
+                        if (now - lastSent < MIN_INTERVAL) return;
+                        lastSent = now;
+
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // WebSocket으로 위치 전송
+                        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                            wsRef.current.sendLoc(lat, lng);
+                        }
+                    },
+                    (error) => {
+                        console.error('위치 추적 실패:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            }
+        } else {
+            // 위치 공유 OFF → GPS 추적 중지 및 WebSocket 종료
+            if (watchIdRef.current) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+                watchIdRef.current = null;
+            }
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+        }
+
+        return () => {
+            if (watchIdRef.current) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+                watchIdRef.current = null;
+            }
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+        };
+    }, [locationShare, locationVisibility]);
+
+    // 설정 저장
+    const saveSettings = async (updates) => {
+        const nickname = localStorage.getItem('nickname');
+        if (!nickname || saving) return;
+
+        setSaving(true);
+        try {
+            const res = await fetch('/api/settings/me', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${encodeURIComponent(nickname)}`,
+                },
+                body: JSON.stringify({
+                    locationShare,
+                    locationVisibility,
+                    chatAlarm,
+                    campRequestAlarm,
+                    ...updates,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error('설정 저장 실패');
+            }
+        } catch (err) {
+            console.error('설정 저장 오류:', err);
+            alert('설정 저장 중 오류가 발생했습니다.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -70,7 +213,12 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={locationShare}
-                    onChange={(e) => setLocationShare(e.target.checked)}
+                    onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setLocationShare(newValue);
+                        saveSettings({ locationShare: newValue });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
@@ -79,7 +227,12 @@ function SettingPage() {
             <div className="visibility-options">
                 <div
                 className={`visibility-option ${locationVisibility === 'all' ? 'selected' : ''}`}
-                onClick={() => setLocationVisibility('all')}
+                onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('all');
+                        saveSettings({ locationVisibility: 'all' });
+                    }
+                }}
                 >
                 <div className="radio-button">
                     {locationVisibility === 'all' && <div className="radio-dot"></div>}
@@ -92,7 +245,12 @@ function SettingPage() {
 
                 <div
                 className={`visibility-option ${locationVisibility === 'friends' ? 'selected' : ''}`}
-                onClick={() => setLocationVisibility('friends')}
+                onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('friends');
+                        saveSettings({ locationVisibility: 'friends' });
+                    }
+                }}
                 >
                 <div className="radio-button">
                     {locationVisibility === 'friends' && <div className="radio-dot"></div>}
@@ -105,7 +263,12 @@ function SettingPage() {
 
                 <div
                 className={`visibility-option ${locationVisibility === 'none' ? 'selected' : ''}`}
-                onClick={() => setLocationVisibility('none')}
+                onClick={() => {
+                    if (!saving) {
+                        setLocationVisibility('none');
+                        saveSettings({ locationVisibility: 'none' });
+                    }
+                }}
                 >
                 <div className="radio-button">
                     {locationVisibility === 'none' && <div className="radio-dot"></div>}
@@ -138,7 +301,12 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={chatAlarm}
-                    onChange={(e) => setChatAlarm(e.target.checked)}
+                    onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setChatAlarm(newValue);
+                        saveSettings({ chatAlarm: newValue });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
@@ -153,7 +321,12 @@ function SettingPage() {
                 <input
                     type="checkbox"
                     checked={campRequestAlarm}
-                    onChange={(e) => setCampRequestAlarm(e.target.checked)}
+                    onChange={(e) => {
+                        const newValue = e.target.checked;
+                        setCampRequestAlarm(newValue);
+                        saveSettings({ campRequestAlarm: newValue });
+                    }}
+                    disabled={saving}
                 />
                 <span className="toggle-slider"></span>
                 </label>
