@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { connectWS } from '../shared/ws.js';
 import './SettingPage.css';
 
 function SettingPage() {
@@ -10,8 +9,6 @@ function SettingPage() {
     const [chatAlarm, setChatAlarm] = useState(false);
     const [campRequestAlarm, setCampRequestAlarm] = useState(false);
     const [saving, setSaving] = useState(false);
-    const watchIdRef = useRef(null);
-    const wsRef = useRef(null);
 
     // 설정 불러오기
     useEffect(() => {
@@ -41,83 +38,6 @@ function SettingPage() {
 
         fetchSettings();
     }, []);
-
-    // WebSocket 연결 및 위치 추적
-    useEffect(() => {
-        const nickname = localStorage.getItem('nickname');
-        const userId = localStorage.getItem('userId');
-        
-        if (!nickname) return;
-
-        if (locationShare && locationVisibility !== 'none') {
-            // WebSocket 연결
-            if (!wsRef.current) {
-                const effectiveUserId = userId || 'anon-' + Math.random().toString(36).slice(2, 8);
-                
-                wsRef.current = connectWS({
-                    userId: String(effectiveUserId),
-                    postId: 'room-1',
-                    nickname,
-                    onJoinAck: (m) => {
-                        if (wsRef.current) wsRef.current.sessionId = m.sessionId;
-                    },
-                    onLocation: () => {},
-                    onClose: () => {},
-                });
-            }
-
-            // GPS 추적 시작
-            if (navigator.geolocation && !watchIdRef.current) {
-                let lastSent = 0;
-                const MIN_INTERVAL = 800;
-
-                watchIdRef.current = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const now = Date.now();
-                        if (now - lastSent < MIN_INTERVAL) return;
-                        lastSent = now;
-
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        
-                        // WebSocket으로 위치 전송
-                        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                            wsRef.current.sendLoc(lat, lng);
-                        }
-                    },
-                    (error) => {
-                        console.error('위치 추적 실패:', error);
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 5000,
-                        maximumAge: 0
-                    }
-                );
-            }
-        } else {
-            // 위치 공유 OFF → GPS 추적 중지 및 WebSocket 종료
-            if (watchIdRef.current) {
-                navigator.geolocation.clearWatch(watchIdRef.current);
-                watchIdRef.current = null;
-            }
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-        }
-
-        return () => {
-            if (watchIdRef.current) {
-                navigator.geolocation.clearWatch(watchIdRef.current);
-                watchIdRef.current = null;
-            }
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-        };
-    }, [locationShare, locationVisibility]);
 
     // 설정 저장
     const saveSettings = async (updates) => {
