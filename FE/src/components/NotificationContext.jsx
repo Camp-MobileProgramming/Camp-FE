@@ -62,11 +62,11 @@ export function NotificationProvider({ children }) {
     fetchNotificationCounts();
   }, []);
 
-  // 🔁 새로고침 없이도 배지가 갱신되도록 주기적으로 리프레시
+  // 새로고침 없이도 배지가 갱신되도록 주기적으로 리프레시
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchNotificationCounts();
-    }, 15000); // 15초마다 한번씩 (원하면 10초 / 20초로 조절 가능)
+    }, 40000); // 40초마다 한번씩 
 
     return () => clearInterval(intervalId);
   }, []);

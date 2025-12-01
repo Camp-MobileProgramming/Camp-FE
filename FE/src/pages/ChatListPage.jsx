@@ -76,7 +76,7 @@ export default function ChatListPage() {
           // ignore polling errors
         }
       })();
-    }, 10000);
+    }, 60000);
 
     return () => clearInterval(id);
   }, [myNickname]);
