@@ -1,14 +1,12 @@
-// shared/ws.js
 export function connectWS({ userId, postId, nickname, onJoinAck, onLocation, onClose }) {
   const base = import.meta.env.VITE_WS_BASE || "/tracking";
   const wsUrl = base.startsWith("ws")
     ? base
     : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}${base}`;
-
+  console.log("[WS] connecting to", wsUrl);
   const ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    // join 시 nickname 같이 전송
     ws.send(JSON.stringify({
       type: "join",
       userId,
@@ -20,12 +18,13 @@ export function connectWS({ userId, postId, nickname, onJoinAck, onLocation, onC
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
+      console.log("[WS MESSAGE]",msg);
       if (msg.type === "join") {
-        // { type: "join", sessionId, userId, postId, nickname, ts }
         onJoinAck && onJoinAck(msg);
       }
       if (msg.type === "loc") {
-        // { type: "loc", sessionId, userId?, postId, lat, lng, nickname, ts }
+        // 여기로 locationVisibility도 같이 들어올 거라고 가정
+        // { type: "loc", sessionId, lat, lng, nickname, locationVisibility, ts, ... }
         onLocation && onLocation(msg);
       }
       if (msg.type === "leave" && msg.sessionId && onClose) {
@@ -39,9 +38,16 @@ export function connectWS({ userId, postId, nickname, onJoinAck, onLocation, onC
   ws.onerror = (e) => console.log("WS error:", e);
   ws.onclose  = () => console.log("WS closed");
 
-  ws.sendLoc = (lat, lng) => {
+  //visibility 같이 보내도록 수정
+  ws.sendLoc = (lat, lng, visibility) => {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "loc", lat, lng }));
+      console.log("[WS] send loc", { lat, lng, visibility })
+      ws.send(JSON.stringify({
+        type: "loc",
+        lat,
+        lng,
+        locationVisibility: visibility, 
+      }));
     }
   };
 
