@@ -11,8 +11,8 @@ function SettingPage() {
     const { settings, toggleSetting } = useNotification();
 
     // 위치 설정은 로컬 state 사용
-    const [locationShare, setLocationShare] = useState(false);
-    const [locationVisibility, setLocationVisibility] = useState('friends');
+    const [locationShare, setLocationShare] = useState(true);
+    const [locationVisibility, setLocationVisibility] = useState('all');
     const [saving, setSaving] = useState(false);
 
     // 설정 불러오기
@@ -29,8 +29,8 @@ function SettingPage() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    setLocationShare(data.locationShare ?? false);
-                    setLocationVisibility(data.locationVisibility ?? 'friends');
+                    setLocationShare(data.locationShare ?? true);
+                    setLocationVisibility(data.locationVisibility ?? 'all');
                     // 알림 설정도 불러오기 (필요시)
                 }
             } catch (err) {

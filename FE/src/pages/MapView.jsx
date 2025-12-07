@@ -7,21 +7,25 @@ import './MapView.css';
 export default function MapView() {
   const mapRef = useRef(null);
   const kakaoMapRef = useRef(null);
-  const myMarkerRef = useRef(null);        // 내 위치 CustomOverlay
-  const othersRef = useRef(new Map());     // Map<sessionId, { overlay, el, nickname }>
+  const myMarkerRef = useRef(null);
+  const othersRef = useRef(new Map());
   const wsRef = useRef(null);
 
-  // 처음에는 "모두 보기"가 기본이도록
-  const [isFriendsOnly, setIsFriendsOnly] = useState(false);
   const [friendsSet, setFriendsSet] = useState(new Set());
+  const friendsSetRef = useRef(new Set());
   const [friendsCount, setFriendsCount] = useState(0);
   const [nearbyCount, setNearbyCount] = useState(0);
+
+  const [locationShare, setLocationShare] = useState(true);
+  const [locationVisibility, setLocationVisibility] = useState('all'); // 'all' | 'friends' | 'none'
+  const locationShareRef = useRef(true);
+  const locationVisibilityRef = useRef('all');
+
   const navigate = useNavigate();
-
   const nickname = localStorage.getItem('nickname') || '나';
-  const userId = localStorage.getItem('userId'); // DB PK (로그인 시 저장했다고 가정)
+  const userId = localStorage.getItem('userId');
 
-  // 친구 목록 불러오기 
+  // 1) 친구 목록 불러오기
   useEffect(() => {
     const fetchFriends = async () => {
       try {
@@ -42,11 +46,10 @@ export default function MapView() {
 
         const data = await res.json();
         const set = new Set(
-          data
-            .map((f) => f.nickname)
-            .filter(Boolean)
+          data.map((f) => f.nickname).filter(Boolean)
         );
         setFriendsSet(set);
+        friendsSetRef.current = set; //최신값 ref에 저장
         setFriendsCount(set.size);
       } catch (e) {
         console.error('친구 목록 불러오기 에러', e);
@@ -56,7 +59,37 @@ export default function MapView() {
     fetchFriends();
   }, []);
 
-  //  WebSocket + 내 위치 세팅 (한 번만)
+  // 2) 내 위치 설정 불러오기 (/api/settings/me)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const myNick = localStorage.getItem('nickname');
+      if (!myNick) return;
+
+      try {
+        const res = await fetch('/api/settings/me', {
+          headers: {
+            'Authorization': `Bearer ${encodeURIComponent(myNick)}`
+          }
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const share = data.locationShare ?? true;
+        const visibility = data.locationVisibility ?? 'all';
+
+        setLocationShare(share);
+        setLocationVisibility(visibility);
+        locationShareRef.current = share; // WS에서 쓸 최신 값
+        locationVisibilityRef.current = visibility;
+      } catch (e) {
+        console.error('위치 설정 불러오기 실패', e);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  // 3) WebSocket + 지도 세팅
   useEffect(() => {
     const { kakao } = window;
 
@@ -96,7 +129,6 @@ export default function MapView() {
         userSelect: 'none',
       });
 
-      // 내 마커 클릭 → 내 프로필로 이동
       myEl.addEventListener('click', () => {
         navigate('/profile');
       });
@@ -113,7 +145,7 @@ export default function MapView() {
 
       // --- WebSocket 연결 ---
       const effectiveUserId =
-        userId || 'anon-' + Math.random().toString(36).slice(2, 8); // DB 없으면 임시값
+        userId || 'anon-' + Math.random().toString(36).slice(2, 8);
 
       const ws = connectWS({
         userId: String(effectiveUserId),
@@ -124,13 +156,22 @@ export default function MapView() {
           if (ws) ws.sessionId = m.sessionId;
         },
 
+        // 서버에서 location 메시지:
+        // { sessionId, lat, lng, nickname, locationVisibility: 'all'|'friends'|'none' }
         onLocation: (m) => {
           if (!kakao) return;
-
-          const { sessionId, lat, lng, nickname: otherNickname } = m;
+          console.log("[onloc]",m);
+          const {
+            sessionId,
+            lat,
+            lng,
+            nickname: otherNickname,
+            locationVisibility: otherVisibility,
+          } = m;
           if (lat == null || lng == null) return;
 
           const pos = new kakao.maps.LatLng(lat, lng);
+          const others = othersRef.current;
 
           // 내 위치인 경우
           if (ws && ws.sessionId && sessionId === ws.sessionId) {
@@ -141,13 +182,25 @@ export default function MapView() {
             return;
           }
 
-          // ── 다른 사람들 위치 업데이트 (친구 여부 상관 없이 일단 다 유지) ──
-          const others = othersRef.current;
-          const rawNickname = otherNickname || sessionId?.slice(-4) || 'USER';
-          const displayName = rawNickname;
+          const displayName = otherNickname || sessionId?.slice(-4) || 'USER';
+          const key = otherNickname ?? displayName;
+          const isFriend = friendsSetRef.current.has(key); // 항상 최신 친구목록 사용
+          const visibility = otherVisibility || 'all'; // 서버 미설정 시 전체공개
+
+          // 상대방의 공개 범위 기준으로만 표시 결정
+          let allowedByUserVisibility = false;
+          if (visibility === 'all') {
+            allowedByUserVisibility = true;
+          } else if (visibility === 'friends') {
+            allowedByUserVisibility = isFriend;
+          } else if (visibility === 'none') {
+            allowedByUserVisibility = false;
+          }
+
+          const shouldShow = allowedByUserVisibility;
 
           if (!others.has(sessionId)) {
-            // 처음 보는 세션 → 동그라미 마커 생성
+            // 새 유저 → 마커 생성
             const el = document.createElement('div');
             el.className = 'user-marker';
             el.innerText = displayName;
@@ -169,7 +222,6 @@ export default function MapView() {
               userSelect: 'none',
             });
 
-            // 다른 사람 마커 클릭 → 그 사람 프로필
             el.addEventListener('click', () => {
               if (otherNickname) {
                 navigate(`/profile/${encodeURIComponent(otherNickname)}`);
@@ -183,15 +235,39 @@ export default function MapView() {
               zIndex: 500,
             });
 
-            overlay.setMap(map);
-            others.set(sessionId, { overlay, el, nickname: rawNickname });
+            if (shouldShow) {
+              overlay.setMap(map);
+            } else {
+              overlay.setMap(null);
+            }
+
+            others.set(sessionId, {
+              overlay,
+              el,
+              nickname: displayName,
+              visibility,
+            });
           } else {
+            // 기존 유저 → 위치/표시 여부 갱신
             const info = others.get(sessionId);
             info.overlay.setPosition(pos);
+            info.visibility = visibility;
+
+            if (shouldShow) {
+              info.overlay.setMap(map);
+            } else {
+              info.overlay.setMap(null);
+            }
           }
 
-          // 필터 적용은 별도 useEffect에서 처리할 거라 여기선 전체 수만 반영
-          setNearbyCount(othersRef.current.size);
+          // 현재 보이는 마커 수 카운트
+          let visibleCount = 0;
+          others.forEach((info) => {
+            if (info.overlay.getMap()) {
+              visibleCount++;
+            }
+          });
+          setNearbyCount(visibleCount);
         },
 
         onClose: (sessionId) => {
@@ -199,7 +275,12 @@ export default function MapView() {
           if (info) {
             info.overlay.setMap(null);
             othersRef.current.delete(sessionId);
-            setNearbyCount(othersRef.current.size);
+            // 남은 사람 중 보이는 마커 수 다시 계산
+            let visibleCount = 0;
+            othersRef.current.forEach((i) => {
+              if (i.overlay.getMap()) visibleCount++;
+            });
+            setNearbyCount(visibleCount);
           }
         },
       });
@@ -224,7 +305,13 @@ export default function MapView() {
 
             myMarkerRef.current.setPosition(me);
             map.setCenter(me);
-            ws.sendLoc(lat, lng);
+
+            // 내 위치 공유 설정에 따라 서버로 보낼지 결정
+            if (locationShareRef.current) {
+              const visibilityToUse = locationVisibilityRef.current;
+              // 서버가 이 visibility를 이용해서 브로드캐스트에 포함
+              ws.sendLoc(lat, lng, visibilityToUse);
+            }
           },
           (e) => console.log('GPS 실패:', e),
           { enableHighAccuracy: true }
@@ -252,33 +339,14 @@ export default function MapView() {
       });
       othersRef.current.clear();
     };
-  }, [navigate, nickname, userId]); // isFriendsOnly, friendsSet 제거
+  }, [navigate, nickname, userId]); // 설정값은 ref/상태로만 사용
 
-  // 친구 공개 필터만 별도 처리
-  useEffect(() => {
-    const map = kakaoMapRef.current;
-    if (!map) return;
-
-    const others = othersRef.current;
-
-    let visibleCount = 0;
-
-    others.forEach((info) => {
-      const isFriend = friendsSet.has(info.nickname);
-      const shouldHide =
-        isFriendsOnly && friendsSet.size > 0 && !isFriend;
-
-      if (shouldHide) {
-        info.overlay.setMap(null);       // 지도에서 감추기
-      } else {
-        info.overlay.setMap(map);        // 다시 보여주기
-        visibleCount++;
-      }
-    });
-
-    // 친구모드에 따라 실제 보이는 사람 수로 업데이트
-    setNearbyCount(visibleCount);
-  }, [isFriendsOnly, friendsSet]); // ✅ 필터 관련 상태만 의존
+  const visibilityLabel =
+    locationVisibility === 'all'
+      ? '전체🌍'
+      : locationVisibility === 'friends'
+      ? '친구 👥'
+      : '비공개';
 
   return (
     <div className="map-page-layout">
@@ -287,7 +355,7 @@ export default function MapView() {
           <h1>캠프맵</h1>
           <span>
             {nearbyCount === 0
-              ? "주변 아무도 없음"
+              ? '주변 아무도 없음'
               : `주변 캠퍼 ${nearbyCount}명`}
           </span>
         </div>
@@ -300,23 +368,17 @@ export default function MapView() {
       </header>
 
       <div className="map-controls">
-        <div className="location-status">📍 위치 공유 중</div>
-        <div className="privacy-toggle">
-          <span>친구 공개</span>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={isFriendsOnly}
-              onChange={() => setIsFriendsOnly((prev) => !prev)}
-            />
-            <span className="slider round"></span>
-          </label>
-          {friendsCount > 0 && (
-            <span className="friends-count-label">
-              (내 친구 {friendsCount}명)
-            </span>
-          )}
+        <div className="location-status">
+          {locationShare ? '위치 공유 중' : '위치 비공개'}
         </div>
+        <div className="privacy-info">
+          위치 공개 범위 : {visibilityLabel}
+        </div>
+        {friendsCount > 0 && (
+          <div className="friends-count-label">
+            내 친구 {friendsCount}명 등록됨
+          </div>
+        )}
       </div>
 
       <div ref={mapRef} className="map-container" />
